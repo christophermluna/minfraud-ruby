@@ -77,13 +77,13 @@ module Minfraud
     # Ensures the required attributes are present
     # @return [Boolean]
     def has_required_attributes?
-      ip and city and state and postal and country
+      ip and city and postal # and state and country
     end
 
     # Validates the types of the attributes
     # @return [nil, TransactionError]
     def validate_attributes
-      [:ip, :city, :state, :postal, :country].each { |s| validate_string(s) }
+      [:ip, :city, :postal].each { |s| validate_string(s) }
     end
 
     # Given the symbol of an attribute that should be a string,

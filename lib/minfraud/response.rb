@@ -41,7 +41,7 @@ module Minfraud
     # @param body [String] raw response body string
     def decode_body
       raise ConnectionException, "The minFraud service responded with http error #{@raw.class}" unless @raw.is_a?(Net::HTTPSuccess)
-      transform_keys(Hash[@raw.body.force_encoding("ISO-8859-1").split(';').map { |e| e.split('=', 2) }]).tap do |body|
+      transform_keys(Hash[(@raw.body.force_encoding("ISO-8859-1").split(';').reject! { |e| e.empty? }).map { |e| e.split('=', 2) }]).tap do |body|
         raise ResponseError, "Error message from minFraud: #{body[:err]}" if ERROR_CODES.include?(body[:err])
       end
     end

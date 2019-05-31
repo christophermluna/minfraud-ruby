@@ -31,7 +31,8 @@ module Minfraud
       avs_result: 'avs_result',
       cvv_result: 'cvv_result',
       requested_type: 'requested_type',
-      forwarded_ip: 'forwardedIP'
+      forwarded_ip: 'forwardedIP',
+      shop_id: 'shopID'
     }
 
     # @param trans [Transaction] transaction to be sent to MaxMind

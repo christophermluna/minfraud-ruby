@@ -22,7 +22,7 @@ module Minfraud
     attr_accessor :session_id, :user_agent, :accept_language
 
     # Transaction attribute (optional)
-    attr_accessor :amount, :currency, :txn_type
+    attr_accessor :amount, :currency, :txn_type, :shop_id
 
     # Credit card result attribute (optional)
     attr_accessor :avs_result, :cvv_result
@@ -55,7 +55,7 @@ module Minfraud
     # Hash of attributes that have been set
     # @return [Hash] present attributes
     def attributes
-      attrs = [:ip, :city, :state, :postal, :country, :license_key, :ship_addr, :ship_city, :ship_state, :ship_postal, :ship_country, :email_domain, :email_md5, :phone, :bin, :session_id, :user_agent, :accept_language, :txn_id, :amount, :currency, :txn_type, :avs_result, :cvv_result, :requested_type, :forwarded_ip]
+      attrs = [:ip, :city, :state, :postal, :country, :license_key, :ship_addr, :ship_city, :ship_state, :ship_postal, :ship_country, :email_domain, :email_md5, :phone, :bin, :session_id, :user_agent, :accept_language, :txn_id, :amount, :currency, :txn_type, :avs_result, :cvv_result, :requested_type, :forwarded_ip, :shop_id]
       attrs.map! do |a|
         [a, send(a)]
       end

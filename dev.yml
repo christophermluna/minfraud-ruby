@@ -1,0 +1,13 @@
+name: minfraud-ruby
+
+type: ruby
+
+up:
+  - homebrew:
+    - openssl
+  - ruby: 2.5.3
+  - bundler
+
+commands:
+  test:
+    run: bundle exec rake spec

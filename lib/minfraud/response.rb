@@ -6,7 +6,7 @@ module Minfraud
   class Response
 
     ERROR_CODES = %w( INVALID_LICENSE_KEY IP_REQUIRED IP_NOT_FOUND LICENSE_REQUIRED COUNTRY_REQUIRED MAX_REQUESTS_REACHED )
-    WARNING_CODES = %w( IP_NOT_FOUND COUNTRY_NOT_FOUND CITY_NOT_FOUND CITY_REQUIRED POSTAL_CODE_REQUIRED POSTAL_CODE_NOT_FOUND )
+    WARNING_CODES = %w( COUNTRY_NOT_FOUND CITY_NOT_FOUND CITY_REQUIRED INVALID_EMAIL_MD5 POSTAL_CODE_REQUIRED POSTAL_CODE_NOT_FOUND )
     INTEGER_ATTRIBUTES = %i(distance queries_remaining ip_accuracy_radius ip_metro_code)
     FLOAT_ATTRIBUTES = %i(ip_latitude ip_longitude score risk_score proxy_score ip_country_conf ip_region_conf ip_city_conf ip_postal_conf)
     BOOLEAN_ATTRIBUTES = %i(country_match high_risk_country anonymous_proxy ip_corporate_proxy free_mail carder_email prepaid city_postal_match

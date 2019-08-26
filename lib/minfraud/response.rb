@@ -5,7 +5,7 @@ module Minfraud
   # field from minFraud, you can get it with `#ip_corporate_proxy`.
   class Response
 
-    ERROR_CODES = %w( INVALID_LICENSE_KEY IP_REQUIRED IP_NOT_FOUND LICENSE_REQUIRED COUNTRY_REQUIRED MAX_REQUESTS_REACHED )
+    ERROR_CODES = %w( INVALID_LICENSE_KEY IP_REQUIRED LICENSE_REQUIRED COUNTRY_REQUIRED MAX_REQUESTS_REACHED )
     WARNING_CODES = %w( IP_NOT_FOUND COUNTRY_NOT_FOUND CITY_NOT_FOUND CITY_REQUIRED POSTAL_CODE_REQUIRED POSTAL_CODE_NOT_FOUND )
     INTEGER_ATTRIBUTES = %i(distance queries_remaining ip_accuracy_radius ip_metro_code)
     FLOAT_ATTRIBUTES = %i(ip_latitude ip_longitude score risk_score proxy_score ip_country_conf ip_region_conf ip_city_conf ip_postal_conf)

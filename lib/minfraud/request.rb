@@ -68,6 +68,8 @@ module Minfraud
       http.use_ssl = true
       http.verify_mode = OpenSSL::SSL::VERIFY_NONE
       http.open_timeout = http.read_timeout = @transaction.timeout if @transaction.timeout
+      http.open_timeout = @transaction.open_timeout if @transaction.open_timeout
+      http.read_timeout = @transaction.read_timeout if @transaction.read_timeout
       request = Net::HTTP::Get.new(uri.request_uri)
       http.request(request)
     end

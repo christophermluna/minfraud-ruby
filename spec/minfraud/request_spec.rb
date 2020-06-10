@@ -69,7 +69,7 @@ describe Minfraud::Request do
       Minfraud::Request.new(trans).get
     end
 
-    it 'sets a timeout on the http connection both read and open' do
+    it 'sets a timeout on the http connection both read and open when given only a default timeout' do
       http = double(:http).as_null_object # loose double
       expect(Net::HTTP).to receive(:new).and_return(http)
       expect(http).to receive(:read_timeout=).with(3)
@@ -83,6 +83,26 @@ describe Minfraud::Request do
         t.country = '5'
         t.txn_id = '6'
         t.timeout = 3
+      end
+      Minfraud::Request.new(trans).get
+    end
+
+    it 'sets a timeout on the http connection both read and open when given each timeout' do
+      http = double(:http).as_null_object # loose double
+      expect(Net::HTTP).to receive(:new).and_return(http)
+      expect(http).to receive(:read_timeout=).with(4)
+      expect(http).to receive(:open_timeout=).with(3)
+
+      trans = Minfraud::Transaction.new do |t|
+        t.ip = '1'
+        t.city = '2'
+        t.state = '3'
+        t.postal = '4'
+        t.country = '5'
+        t.txn_id = '6'
+        t.timeout = 2
+        t.open_timeout = 3
+        t.read_timeout = 4
       end
       Minfraud::Request.new(trans).get
     end

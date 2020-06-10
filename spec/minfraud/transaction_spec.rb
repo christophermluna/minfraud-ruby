@@ -166,4 +166,40 @@ describe Minfraud::Transaction do
     end
   end
 
+  describe "#open_timeout=" do
+    it 'raises an ArgumentError if a numeric value is not provided' do
+      transaction = Minfraud::Transaction.new do |t|
+        t.ip = 'ip'
+        t.city = 'city'
+        t.state = 'state'
+        t.postal = 'postal'
+        t.country = 'country'
+        t.email = 'hughjass@example.com'
+        t.txn_id = 'Order-1'
+      end
+      expect { transaction.open_timeout = "1.0" }.to raise_exception(
+        ArgumentError,
+        /Open timeout value must be Numeric/
+      )
+    end
+  end
+
+  describe "#read_timeout=" do
+    it 'raises an ArgumentError if a numeric value is not provided' do
+      transaction = Minfraud::Transaction.new do |t|
+        t.ip = 'ip'
+        t.city = 'city'
+        t.state = 'state'
+        t.postal = 'postal'
+        t.country = 'country'
+        t.email = 'hughjass@example.com'
+        t.txn_id = 'Order-1'
+      end
+      expect { transaction.read_timeout = "3.0" }.to raise_exception(
+        ArgumentError,
+        /Read timeout value must be Numeric/
+      )
+    end
+  end
+
 end

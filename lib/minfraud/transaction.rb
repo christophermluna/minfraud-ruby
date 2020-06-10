@@ -36,6 +36,9 @@ module Minfraud
     # Set a custom timeout for both read and opening the connection
     attr_accessor :timeout
 
+    # Connection timeout and read timeout
+    attr_accessor :open_timeout, :read_timeout
+
     def initialize
       yield self
       unless has_required_attributes?
@@ -78,6 +81,16 @@ module Minfraud
     def timeout=(timeout)
       raise ArgumentError, "Timeout value must be Numeric" unless timeout.is_a?(Numeric)
       @timeout = timeout
+    end
+
+    def open_timeout=(timeout)
+      raise ArgumentError, "Open timeout value must be Numeric" unless timeout.is_a?(Numeric)
+      @open_timeout = timeout
+    end
+
+    def read_timeout=(timeout)
+      raise ArgumentError, "Read timeout value must be Numeric" unless timeout.is_a?(Numeric)
+      @read_timeout = timeout
     end
 
     private

@@ -7,7 +7,7 @@ module Minfraud
   class Transaction
 
     # Required attribute
-    attr_accessor :ip, :city, :state, :postal, :country, :txn_id
+    attr_accessor :ip, :city, :state, :postal, :country, :txn_id, :license_key
 
     # Shipping address attribute (optional)
     attr_accessor :ship_addr, :ship_city, :ship_state, :ship_postal, :ship_country
@@ -30,29 +30,12 @@ module Minfraud
     # Miscellaneous attribute (optional)
     attr_accessor :requested_type, :forwarded_ip
 
-    # Override the host choice for this transaction
-    attr_accessor :host_choice
-
-    # Set a custom timeout for both read and opening the connection
-    attr_accessor :timeout
-
-    # Connection timeout and read timeout
-    attr_accessor :open_timeout, :read_timeout
-
     def initialize
       yield self
       unless has_required_attributes?
         raise TransactionError, 'You did not set all the required transaction attributes.'
       end
       validate_attributes
-    end
-
-    # Retrieves the risk score from MaxMind.
-    # A higher score indicates a higher risk of fraud.
-    # For example, a score of 20 indicates a 20% chance that a transaction is fraudulent.
-    # @return [Float] 0.01 - 100.0
-    def risk_score
-      response.risk_score
     end
 
     # Hash of attributes that have been set
@@ -65,46 +48,18 @@ module Minfraud
       Hash[attrs]
     end
 
-    # Uses the requested_type set on the instance, or if not present, the requested_type set during configuration
-    # @return [String, nil] requested type
-    def requested_type
-      @requested_type or Minfraud.requested_type
-    end
-
-    # Sends transaction to MaxMind in order to get risk data on it.
-    # Caches response object in @response.
-    # @return [Response]
-    def response
-      @response ||= Request.get(self)
-    end
-
-    def timeout=(timeout)
-      raise ArgumentError, "Timeout value must be Numeric" unless timeout.is_a?(Numeric)
-      @timeout = timeout
-    end
-
-    def open_timeout=(timeout)
-      raise ArgumentError, "Open timeout value must be Numeric" unless timeout.is_a?(Numeric)
-      @open_timeout = timeout
-    end
-
-    def read_timeout=(timeout)
-      raise ArgumentError, "Read timeout value must be Numeric" unless timeout.is_a?(Numeric)
-      @read_timeout = timeout
-    end
-
     private
 
     # Ensures the required attributes are present
     # @return [Boolean]
     def has_required_attributes?
-      ip && txn_id
+      ip && txn_id && license_key
     end
 
     # Validates the types of the attributes
     # @return [nil, TransactionError]
     def validate_attributes
-      [:ip, :city, :state, :postal, :country, :txn_id].each { |s| validate_string(s) }
+      [:ip, :city, :state, :postal, :country, :txn_id, :license_key].each { |s| validate_string(s) }
     end
 
     # Given the symbol of an attribute that should be a string,
@@ -126,11 +81,6 @@ module Minfraud
     # @return [String, nil] MD5 hash of the whole email address
     def email_md5
       Digest::MD5.hexdigest(email.to_s)
-    end
-
-    # @return [String] license key set during configuration
-    def license_key
-      Minfraud.license_key
     end
 
   end

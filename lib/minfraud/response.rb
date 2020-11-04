@@ -22,7 +22,7 @@ module Minfraud
     # Raises an exception if minFraud returns an error message
     # Does nothing (at the moment) if minFraud returns a warning message
     # Raises an exception if minFraud responds with anything other than an HTTP success code
-    # @param raw [Net::HTTPResponse]
+    # @param raw [Faraday::Response]
     def initialize(raw)
       @raw = raw
     end
@@ -32,15 +32,14 @@ module Minfraud
     end
 
     def code
-      @raw.code
+      @raw.status
     end
 
     private
 
     # Parses raw response body and turns its keys and values into attributes on self.
-    # @param body [String] raw response body string
     def decode_body
-      raise ConnectionException, "The minFraud service responded with http error #{@raw.class}" unless @raw.is_a?(Net::HTTPSuccess)
+      raise ConnectionException, "The minFraud service responded with http error #{@raw.status.to_s}" unless @raw.success?
       transform_keys(Hash[(@raw.body.force_encoding("ISO-8859-1").split(';').reject { |e| e.empty? }).map { |e| e.split('=', 2) }]).tap do |body|
         raise ResponseError, "Error message from minFraud: #{body[:err]}" if ERROR_CODES.include?(body[:err])
       end

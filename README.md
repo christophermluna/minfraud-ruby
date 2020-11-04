@@ -1,30 +1,22 @@
 # Ruby interface to the MaxMind minFraud API
 
-Compatible with version minFraud API v1.3  
-[minFraud API documentation](http://dev.maxmind.com/minfraud/)  
-[minFraud](http://www.maxmind.com/en/ccv_overview)
+Compatible with [minFraud](http://www.maxmind.com/en/ccv_overview) Legacy API
 
-[![Build Status](https://travis-ci.org/rdpitts/minfraud-ruby.svg?branch=master)](https://travis-ci.org/rdpitts/minfraud-ruby)
-[![Code Climate](https://codeclimate.com/github/rdpitts/minfraud-ruby.png)](https://codeclimate.com/github/rdpitts/minfraud-ruby)
-
-[Rubydoc documentation](http://rubydoc.info/github/rdpitts/minfraud-ruby/master/frames)
-
-## Configuration
-
-Your license key is how MaxMind will identify you, so it is required.
-
-```ruby
-Minfraud.configure do |c|
-  c.license_key = 'abcd1234'
-  c.requested_type = 'standard'
-end
-```
-
-`requested_type` can be set during configuration to use that default value or it can be set on the transaction. If unset minFraud will default to the highest level of service available to you.
+[minFraud API documentation](https://dev.maxmind.com/minfraud/minfraud-legacy/)  
 
 ## Usage
 
 ```ruby
+minfraud_client = Minfraud::MinfraudClient.new(
+  # Optional fields to customize connection
+  host_choice: 'us_east',
+  open_timeout: 1,
+  idle_timeout: 5,
+  read_timeout: 5,
+  write_timeout: 5,
+  pool_size: 10
+)
+
 transaction = Minfraud::Transaction.new do |t|
   # Required fields
   # Other fields listed later in documentation are optional
@@ -34,35 +26,27 @@ transaction = Minfraud::Transaction.new do |t|
   t.postal = '12345'
   t.country = 'US' # http://en.wikipedia.org/wiki/ISO_3166-1
   t.txn_id = 'Order-1'
+  t.license_key = 'minfraud-license-key'
   # ...
 end
 
-transaction.risk_score
-# => 3.48
+response = minfraud_client.send_transaction(
+  transaction: transaction,
+  # Optional field to customize connection
+  url: '/app/ccv2r'
+)
 
-response = transaction.response # http://dev.maxmind.com/minfraud/
 response.parse # parses body to create hash
-```
 
-To override host choice basically set the `host_choice` attribute on transaction. Available hosts: `:us_east`, `:us_west`, and `:eu_west`
-```ruby
-transaction = Minfraud::Transaction.new do |t|
-  # Required fields
-  t.host_choice = 'us_east'
-  # ...
-end
+response.dig(:risk_score)
+# => 3.48
 ```
-
-If `host_choice` is not specified or is invalid then the default host of `minfraud.maxmind.com` is used.
 
 ### Exception handling
 
 There are three different exceptions that this gem may raise. Please be prepared to handle them:
 
 ```ruby
-# Raised if configuration is invalid
-class ConfigurationError < ArgumentError; end
-
 # Raised if a transaction is invalid
 class TransactionError < ArgumentError; end
 
@@ -108,11 +92,3 @@ class ConnectionException < StandardError; end
 | cvv_result         | string             | Y/N |
 | requested_type     | string             | standard/premium |
 | forwarded_ip       | string             | The end user’s IP address, as forwarded by a transparent proxy |
-
-## Contributing
-
-1. Fork it ( http://github.com/rdpitts/minfraud-ruby/fork )
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request

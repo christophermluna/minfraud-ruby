@@ -1,15 +1,14 @@
 require 'spec_helper'
 
 describe Minfraud::Response do
-  let(:ok_response_double) { double(Net::HTTPOK, body: 'firstKey=first value;second_keyName=second value', is_a?: true, code: 200) }
-  let(:test_response_double) { double(Net::HTTPOK, body: 'distance=17034;ip_latitude=-27.0000', is_a?: true, code: 200) }
-  let(:boolean_test_response_double) { double(Net::HTTPOK, body: 'countryMatch=Yes;highRiskCountry=No;binMatch=NotFound;binNameMatch=NA', is_a?: true, code: 200) }
-  let(:latin1_response_double) { double(Net::HTTPOK, body: 'ip_city=Montr\xE9al'.force_encoding("ASCII-8BIT"), is_a?: true, code: 200) }
-  let(:multiple_equals_response_double) { double(Net::HTTPOK, body: 'maxmindID=ANK4C13A;ip_asnum=S44700 == Upstreams =======================================', is_a?: true, code: 200) }
-  let(:warning_response_double) { double(Net::HTTPOK, body: 'err=COUNTRY_NOT_FOUND', is_a?: true, code: 200) }
-  let(:error_response_double) { double(Net::HTTPOK, body: 'err=INVALID_LICENSE_KEY', is_a?: true, code: 200) }
-  let(:server_error_response_double) { double(Net::HTTPRequestTimeOut, code: 408) }
-  let(:err) { Faker::HipsterIpsum.word }
+  let(:ok_response_double) { double(Faraday::Response, body: 'firstKey=first value;second_keyName=second value', success?: true, status: 200) }
+  let(:test_response_double) { double(Faraday::Response, body: 'distance=17034;ip_latitude=-27.0000', success?: true, status: 200) }
+  let(:boolean_test_response_double) { double(Faraday::Response, body: 'countryMatch=Yes;highRiskCountry=No;binMatch=NotFound;binNameMatch=NA', success?: true, status: 200) }
+  let(:latin1_response_double) { double(Faraday::Response, body: 'ip_city=Montr\xE9al'.force_encoding("ASCII-8BIT"), success?: true, status: 200) }
+  let(:multiple_equals_response_double) { double(Faraday::Response, body: 'maxmindID=ANK4C13A;ip_asnum=S44700 == Upstreams =======================================', success?: true, status: 200) }
+  let(:warning_response_double) { double(Faraday::Response, body: 'err=COUNTRY_NOT_FOUND', success?: true, status: 200) }
+  let(:error_response_double) { double(Faraday::Response, body: 'err=INVALID_LICENSE_KEY', success?: true, status: 200) }
+  let(:server_error_response_double) { double(Faraday::Response, success?: false, status: 408) }
 
   describe '.new' do
     subject(:response) { Minfraud::Response.new(ok_response_double).tap {|r| r.parse} }

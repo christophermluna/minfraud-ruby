@@ -4,10 +4,14 @@ module Minfraud
 
   # This is the container for the data you're sending to MaxMind.
   # A transaction holds data like name, address, IP, order amount, etc.
+  # After initialization, the Transaction object will be immutable
   class Transaction
 
     # Required attribute
-    attr_accessor :ip, :city, :state, :postal, :country, :txn_id, :license_key
+    attr_accessor :ip, :txn_id, :license_key
+
+    # Billing address (optional)
+    attr_accessor :city, :state, :postal, :country
 
     # Shipping address attribute (optional)
     attr_accessor :ship_addr, :ship_city, :ship_state, :ship_postal, :ship_country
@@ -19,7 +23,7 @@ module Minfraud
     attr_accessor :bin
 
     # Transaction linking attribute (optional)
-    attr_accessor :session_id, :user_agent, :accept_language
+    attr_accessor :user_agent, :accept_language
 
     # Transaction attribute (optional)
     attr_accessor :amount, :currency, :txn_type, :shop_id
@@ -28,24 +32,53 @@ module Minfraud
     attr_accessor :avs_result, :cvv_result
 
     # Miscellaneous attribute (optional)
-    attr_accessor :requested_type, :forwarded_ip
+    attr_accessor :requested_type
 
+    ATTRIBUTES = [
+      :ip, :txn_id, :license_key,
+      :city, :state, :postal, :country,
+      :ship_addr, :ship_city, :ship_state, :ship_postal, :ship_country,
+      :email_domain, :email_md5, :phone,
+      :bin,
+      :user_agent, :accept_language,
+      :amount, :currency, :txn_type, :shop_id,
+      :avs_result, :cvv_result,
+      :requested_type
+    ].freeze
+
+    INPUT_STRING_ATTRIBUTES = [
+      :ip, :txn_id, :license_key,
+      :city, :state, :postal, :country,
+      :ship_addr, :ship_city, :ship_state, :ship_postal, :ship_country,
+      :email, :phone,
+      :bin,
+      :user_agent, :accept_language,
+      :currency, :txn_type,
+      :avs_result, :cvv_result,
+      :requested_type
+    ].freeze
+
+    INPUT_NUMERIC_ATTRIBUTES = [:amount].freeze
+
+    REQUIRED_ATTRIBUTES = [:ip, :txn_id, :license_key].freeze
+
+    CONVERT_STRING_ATTRIBUTES = [:shop_id].freeze
+
+    # Initializes the Transaction using parameters set from the block
+    # @raise [TransactionError] if parameters are set incorrectly
     def initialize
       yield self
       unless has_required_attributes?
         raise TransactionError, 'You did not set all the required transaction attributes.'
       end
       validate_attributes
+      freeze
     end
 
     # Hash of attributes that have been set
     # @return [Hash] present attributes
     def attributes
-      attrs = [:ip, :city, :state, :postal, :country, :license_key, :ship_addr, :ship_city, :ship_state, :ship_postal, :ship_country, :email_domain, :email_md5, :phone, :bin, :session_id, :user_agent, :accept_language, :txn_id, :amount, :currency, :txn_type, :avs_result, :cvv_result, :requested_type, :forwarded_ip, :shop_id]
-      attrs.map! do |a|
-        [a, send(a)]
-      end
-      Hash[attrs]
+      Hash[ATTRIBUTES.map { |a| [a, send(a)] }].compact
     end
 
     private
@@ -53,35 +86,85 @@ module Minfraud
     # Ensures the required attributes are present
     # @return [Boolean]
     def has_required_attributes?
-      ip && txn_id && license_key
+      REQUIRED_ATTRIBUTES.none? { |attr| send(attr).nil? || send(attr).empty? }
     end
 
     # Validates the types of the attributes
-    # @return [nil, TransactionError]
+    # @raise [TransactionError] if present attributes are not valid
+    # @return [void]
     def validate_attributes
-      [:ip, :city, :state, :postal, :country, :txn_id, :license_key].each { |s| validate_string(s) }
+      INPUT_STRING_ATTRIBUTES.each { |attr| validate_string(attr) }
+      INPUT_NUMERIC_ATTRIBUTES.each { |attr| validate_number(attr) }
+      CONVERT_STRING_ATTRIBUTES.each { |attr| convert_to_string(attr) }
+      validate_cvv # CVV must be a single character
     end
 
     # Given the symbol of an attribute that should be a string,
     # it checks the attribute's type and throws an error if it's not a string.
     # @param attr_name [Symbol] name of the attribute to validate
-    # @return [nil, TransactionError]
+    # @raise [TransactionError] if attribute is not a string
+    # @return [void]
     def validate_string(attr_name)
-      attribute = self.send(attr_name)
+      attribute = send(attr_name)
       if attribute && !attribute.instance_of?(String)
         raise TransactionError, "Transaction.#{attr_name} must be a string"
       end
     end
 
+    # Given the symbol of an attribute that should be a number,
+    # it checks the attribute's type and throws an error if it
+    # cannot be interpreted as a BigDecimal
+    # @param attr_name [Symbol] name of the attribute to validate
+    # @raise [TransactionError] if attribute is not a number
+    # @return [void]
+    def validate_number(attr_name)
+      attribute = send(attr_name)
+      return if attribute.nil? || attribute.is_a?(Numeric)
+      begin
+        BigDecimal(attribute)
+      rescue
+        raise TransactionError, "Transaction.#{attr_name} must be a number"
+      end
+    end
+
+    # Validates the cvv_result, which must be a single character
+    # @raise [TransactionError] if cvv_result is not a single character
+    # @return [void]
+    def validate_cvv
+      return if cvv_result.nil? || cvv_result.empty?
+      unless cvv_result.length == 1
+        raise TransactionError, "Transaction.cvv_result must be a single letter"
+      end
+    end
+
+    # Converts the given attribute to a string
+    # @param attr_name [Symbol] name of the attribute to convert
+    # @return [void]
+    def convert_to_string(attr_name)
+      attribute = send(attr_name)
+      return if attribute.nil?
+      send("#{attr_name}=", attribute.to_s)
+    end
+
     # @return [String, nil] domain of the email address
     def email_domain
+      return nil if email.nil? || email.empty?
       email.to_s.split('@').last
     end
 
     # @return [String, nil] MD5 hash of the whole email address
     def email_md5
-      Digest::MD5.hexdigest(email.to_s)
+      return nil if email.nil? || email.empty?
+      # convert the email address to lowercase before calculating its MD5 hash
+      Digest::MD5.hexdigest(email.to_s.downcase).to_s
     end
+
+    private_constant(
+      :ATTRIBUTES,
+      :INPUT_STRING_ATTRIBUTES,
+      :INPUT_NUMERIC_ATTRIBUTES,
+      :REQUIRED_ATTRIBUTES
+    )
 
   end
 end

@@ -28,7 +28,6 @@ module Minfraud
       email_md5: 'emailMD5',
       phone: 'custPhone',
       bin: 'bin',
-      session_id: 'sessionID',
       user_agent: 'user_agent',
       accept_language: 'accept_language',
       txn_id: 'txnID',
@@ -38,16 +37,15 @@ module Minfraud
       avs_result: 'avs_result',
       cvv_result: 'cvv_result',
       requested_type: 'requested_type',
-      forwarded_ip: 'forwardedIP',
       shop_id: 'shopID'
-    }
+    }.freeze
 
-    # @param url [String] String base URL
-    # @param open_timeout [Numeric] Seconds to wait for a connection to be opened
-    # @param idle_timeout [Numeric] Seconds before automatically be resetting an unused connection
-    # @param read_timeout [Numeric] Seconds to wait until reading one block
-    # @param write_timeout [Numeric] Seconds to wait until writing one block
-    # @param pool_size [Numeric] Maximum number of connections allowed
+    # @param host_choice [String] String base URL
+    # @param open_timeout [Integer] Seconds to wait for a connection to be opened
+    # @param idle_timeout [Integer] Seconds before automatically be resetting an unused connection
+    # @param read_timeout [Integer] Seconds to wait until reading one block
+    # @param write_timeout [Integer] Seconds to wait until writing one block
+    # @param pool_size [Integer] Maximum number of connections allowed at once
     def initialize(
       host_choice: DEFAULT_HOST,
       open_timeout: DEFAULT_OPEN_TIMEOUT,
@@ -69,13 +67,15 @@ module Minfraud
 
     # @param url [String] URL endpoint, such as '/app/ccv2r'
     # @param transaction [Minfraud::Transaction] transaction to be sent to MaxMind
+    # @yield [Minfraud::Response] a block passed to the response to modify it during initialization
     # @return [Minfraud::Response] wrapper for minFraud response
-    def send_transaction(transaction:, url: DEFAULT_API)
+    def send_transaction(transaction:, url: DEFAULT_API, &block)
       begin
         response = @http_client.get(url) do |req|
           req.params = self.class.encoded_query(transaction)
         end
-        Response.new(response)
+        # Pass the block during initialization to modify the Response before it is frozen
+        Response.new(response, &block)
       rescue => e
         raise ConnectionException, "The minFraud connection failed due to #{e.class.name}"
       end
@@ -94,7 +94,7 @@ module Minfraud
       :DEFAULT_READ_TIMEOUT,
       :DEFAULT_WRITE_TIMEOUT,
       :DEFAULT_POOL_SIZE,
-      :FIELD_MAP,
+      :FIELD_MAP
     )
   end
 end

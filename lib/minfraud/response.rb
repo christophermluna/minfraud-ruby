@@ -3,44 +3,74 @@ module Minfraud
   # This class wraps the raw minFraud response. Any minFraud response field is accessible on a Response
   # instance as a snake-cased instance method. For example, if you want the `ip_corporateProxy`
   # field from minFraud, you can get it with `#ip_corporate_proxy`.
+  # After initialization, the Response object will be immutable
   class Response
 
-    ERROR_CODES = %w( INVALID_LICENSE_KEY IP_REQUIRED LICENSE_REQUIRED COUNTRY_REQUIRED MAX_REQUESTS_REACHED )
-    WARNING_CODES = %w( IP_NOT_FOUND COUNTRY_NOT_FOUND CITY_NOT_FOUND CITY_REQUIRED POSTAL_CODE_REQUIRED POSTAL_CODE_NOT_FOUND )
-    INTEGER_ATTRIBUTES = %i(distance queries_remaining ip_accuracy_radius ip_metro_code)
-    FLOAT_ATTRIBUTES = %i(ip_latitude ip_longitude score risk_score proxy_score ip_country_conf ip_region_conf ip_city_conf ip_postal_conf)
-    BOOLEAN_ATTRIBUTES = %i(country_match high_risk_country anonymous_proxy ip_corporate_proxy free_mail carder_email prepaid city_postal_match
-                            ship_city_postal_match bin_match bin_name_match bin_phone_match cust_phone_in_billing_loc ship_forward)
+    # Allow the parsed response body to be accessed as a Hash
+    attr_reader :body
+
+    ERROR_CODES = %w(
+      INVALID_LICENSE_KEY IP_REQUIRED MAX_REQUESTS_REACHED LICENSE_REQUIRED PERMISSION_REQUIRED
+    ).freeze
+
+    # The client does not handle warnings
+    # If a warning is present, it will be found in the :err attribute of the Response
+    WARNING_CODES = %w(
+      IP_NOT_FOUND COUNTRY_NOT_FOUND CITY_NOT_FOUND CITY_REQUIRED
+      INVALID_EMAIL_MD5 POSTAL_CODE_REQUIRED POSTAL_CODE_NOT_FOUND
+    ).freeze
+
+    INTEGER_ATTRIBUTES = %i(
+      distance queries_remaining ip_accuracy_radius ip_metro_code
+    ).freeze
+
+    FLOAT_ATTRIBUTES = %i(
+      ip_latitude ip_longitude score risk_score proxy_score ip_country_conf
+      ip_region_conf ip_city_conf ip_postal_conf
+    ).freeze
+
+    BOOLEAN_ATTRIBUTES = %i(
+      country_match high_risk_country anonymous_proxy ip_corporate_proxy free_mail
+      carder_email prepaid city_postal_match ship_city_postal_match bin_match
+      bin_name_match bin_phone_match cust_phone_in_billing_loc ship_forward
+    ).freeze
+
     BOOLEAN_RESPONSES = {
       "Yes"      => true,
       "No"       => false,
       "NA"       => nil,
       "NotFound" => nil,
-    }
+    }.freeze
 
-    # Sets attributes on self using minFraud response keys and values
-    # Raises an exception if minFraud returns an error message
-    # Does nothing (at the moment) if minFraud returns a warning message
-    # Raises an exception if minFraud responds with anything other than an HTTP success code
-    # @param raw [Faraday::Response]
-    def initialize(raw)
-      @raw = raw
-    end
-
-    def parse
-      @body ||= decode_body
-    end
-
-    def code
-      @raw.status
+    # Initializes the Response with the data retrieved from the MinfraudClient
+    # If successful, keys and values from the response will be turned into attributes on self
+    # After initialization, the Response object will be immutable
+    # @raise [ConnectionException, ResponseError] if response was not successful
+    # @param raw [Faraday::Response] the response data from MinfraudClient
+    # @yield [Minfraud::Response] to allow modification of fields in the response
+    def initialize(raw, &block)
+      @body = decode_body(raw)
+      if block_given?
+        # Allow for any changes to the response body before freezing the object
+        block.call(@body)
+      end
+      freeze
+      @body.freeze
     end
 
     private
 
     # Parses raw response body and turns its keys and values into attributes on self.
-    def decode_body
-      raise ConnectionException, "The minFraud service responded with http error #{@raw.status.to_s}" unless @raw.success?
-      transform_keys(Hash[(@raw.body.force_encoding("ISO-8859-1").split(';').reject { |e| e.empty? }).map { |e| e.split('=', 2) }]).tap do |body|
+    # @raise [ConnectionException, ResponseError] if response was not successful
+    def decode_body(raw)
+      unless raw.success?
+        raise ConnectionException, "The minFraud service responded with http error #{raw.status.to_s}"
+      end
+
+      parsed_body = raw.body.force_encoding("ISO-8859-1").split(';').reject { |e| e.empty? }
+      parsed_keys = Hash[(parsed_body).map { |e| e.split('=', 2) }]
+
+      transform_keys(parsed_keys).tap do |body|
         raise ResponseError, "Error message from minFraud: #{body[:err]}" if ERROR_CODES.include?(body[:err])
       end
     end
@@ -55,11 +85,10 @@ module Minfraud
         if key.match(/\A[A-Z]+\z/)
           key = key.downcase
         else
-          key = key.
-          gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2').
-          gsub(/([a-z])([A-Z])/, '\1_\2').
-          downcase.
-          to_sym
+          key = key.gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
+                   .gsub(/([a-z])([A-Z])/, '\1_\2')
+                   .downcase
+                   .to_sym
         end
 
         value = e.last

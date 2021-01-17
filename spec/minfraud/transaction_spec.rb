@@ -14,7 +14,7 @@ describe Minfraud::Transaction do
     end
 
     it 'raises an exception if required attributes are not set' do
-      expect { Minfraud::Transaction.new { |c| true } }.to raise_exception(Minfraud::TransactionError, /required/)
+      expect { Minfraud::Transaction.new { |c| true } }.to raise_exception(Minfraud::TransactionAttributeMissingError, /required/)
     end
 
     it 'raises an exception if string attributes are invalid' do
@@ -28,7 +28,21 @@ describe Minfraud::Transaction do
           t.state = 'test_state'
         end
       end
-      expect { transaction.call }.to raise_exception(Minfraud::TransactionError, /city must be a string/)
+      expect { transaction.call }.to raise_exception(Minfraud::TransactionAttributeValidationError, /city must be a string/)
+    end
+
+    it 'skips attribute validation when strong_validation flag is set to false' do
+      transaction = lambda do
+        Minfraud::Transaction.new(strong_validation: false) do |t|
+          t.ip = '127.0.0.1'
+          t.txn_id = 'Order-1-1'
+          t.license_key = 'test_license'
+          t.city = 2
+          t.amount = 27.04
+          t.state = 'test_state'
+        end
+      end
+      transaction.call
     end
 
     it 'raises an exception if numeric attributes are invalid' do
@@ -41,7 +55,7 @@ describe Minfraud::Transaction do
           t.state = 'test_state'
         end
       end
-      expect { transaction.call }.to raise_exception(Minfraud::TransactionError, /amount must be a number/)
+      expect { transaction.call }.to raise_exception(Minfraud::TransactionAttributeValidationError, /amount must be a number/)
     end
 
     it 'accepts strings as numbers' do
@@ -97,7 +111,7 @@ describe Minfraud::Transaction do
           t.txn_id = 'Order-1-1'
         end
       end
-      expect { transaction.call }.to raise_exception(Minfraud::TransactionError, /required/)
+      expect { transaction.call }.to raise_exception(Minfraud::TransactionAttributeMissingError, /required/)
     end
 
     it 'raises an exception if license key is left empty' do
@@ -108,7 +122,7 @@ describe Minfraud::Transaction do
           t.license_key = ''
         end
       end
-      expect { transaction.call }.to raise_exception(Minfraud::TransactionError, /required/)
+      expect { transaction.call }.to raise_exception(Minfraud::TransactionAttributeMissingError, /required/)
     end
 
     it 'raises an exception if cvv_result is not a single letter' do
@@ -120,7 +134,7 @@ describe Minfraud::Transaction do
           t.cvv_result = 'AB'
         end
       end
-      expect { transaction.call }.to raise_exception(Minfraud::TransactionError, /single letter/)
+      expect { transaction.call }.to raise_exception(Minfraud::TransactionAttributeValidationError, /single letter/)
     end
 
   end

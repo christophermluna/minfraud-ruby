@@ -65,13 +65,14 @@ module Minfraud
     CONVERT_STRING_ATTRIBUTES = [:shop_id].freeze
 
     # Initializes the Transaction using parameters set from the block
-    # @raise [TransactionError] if parameters are set incorrectly
-    def initialize
+    # @raise [TransactionAttributeValidationError] if parameters are set incorrectly
+    # @raise [TransactionAttributeMissingError] if required parameters are missing
+    def initialize(strong_validation: true)
       yield self
       unless has_required_attributes?
-        raise TransactionError, 'You did not set all the required transaction attributes.'
+        raise TransactionAttributeMissingError, 'You did not set all the required transaction attributes.'
       end
-      validate_attributes
+      validate_attributes if strong_validation
       freeze
     end
 
@@ -90,7 +91,7 @@ module Minfraud
     end
 
     # Validates the types of the attributes
-    # @raise [TransactionError] if present attributes are not valid
+    # @raise [TransactionAttributeValidationError] if present attributes are not valid
     # @return [void]
     def validate_attributes
       INPUT_STRING_ATTRIBUTES.each { |attr| validate_string(attr) }
@@ -102,12 +103,12 @@ module Minfraud
     # Given the symbol of an attribute that should be a string,
     # it checks the attribute's type and throws an error if it's not a string.
     # @param attr_name [Symbol] name of the attribute to validate
-    # @raise [TransactionError] if attribute is not a string
+    # @raise [TransactionAttributeValidationError] if attribute is not a string
     # @return [void]
     def validate_string(attr_name)
       attribute = send(attr_name)
       if attribute && !attribute.instance_of?(String)
-        raise TransactionError, "Transaction.#{attr_name} must be a string"
+        raise TransactionAttributeValidationError, "Transaction.#{attr_name} must be a string"
       end
     end
 
@@ -115,7 +116,7 @@ module Minfraud
     # it checks the attribute's type and throws an error if it
     # cannot be interpreted as a BigDecimal
     # @param attr_name [Symbol] name of the attribute to validate
-    # @raise [TransactionError] if attribute is not a number
+    # @raise [TransactionAttributeValidationError] if attribute is not a number
     # @return [void]
     def validate_number(attr_name)
       attribute = send(attr_name)
@@ -123,17 +124,17 @@ module Minfraud
       begin
         BigDecimal(attribute)
       rescue
-        raise TransactionError, "Transaction.#{attr_name} must be a number"
+        raise TransactionAttributeValidationError, "Transaction.#{attr_name} must be a number"
       end
     end
 
     # Validates the cvv_result, which must be a single character
-    # @raise [TransactionError] if cvv_result is not a single character
+    # @raise [TransactionAttributeValidationError] if cvv_result is not a single character
     # @return [void]
     def validate_cvv
       return if cvv_result.nil? || cvv_result.empty?
       unless cvv_result.length == 1
-        raise TransactionError, "Transaction.cvv_result must be a single letter"
+        raise TransactionAttributeValidationError, "Transaction.cvv_result must be a single letter"
       end
     end
 

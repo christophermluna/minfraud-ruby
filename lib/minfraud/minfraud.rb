@@ -1,7 +1,10 @@
 module Minfraud
 
-  # Raised if a transaction is invalid
-  class TransactionError < ArgumentError; end
+  # Raised if a transaction attribute validation fails
+  class TransactionAttributeValidationError < ArgumentError; end
+
+  # Raised if a transaction attributes are missing
+  class TransactionAttributeMissingError < ArgumentError; end
 
   # Raised if minFraud returns an error
   class ResponseError < StandardError; end

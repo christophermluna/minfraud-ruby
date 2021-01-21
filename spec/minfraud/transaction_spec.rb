@@ -4,6 +4,21 @@ require 'bigdecimal'
 describe Minfraud::Transaction do
 
   describe 'Minfraud::Transaction.new' do
+
+    let(:logger) do
+      instance_double("Logger")
+    end
+
+    let(:rails) do
+      double("Rails")
+    end
+
+    before do
+      allow(rails).to receive(:logger).and_return(logger)
+      allow(logger).to receive(:info)
+      stub_const("Rails", rails)
+    end
+
     it 'yields the current instance module' do
       Minfraud::Transaction.new do |t|
         t.ip = '127.0.0.1'
@@ -140,6 +155,20 @@ describe Minfraud::Transaction do
   end
 
   describe 'Minfraud::Transaction#attributes' do
+    let(:logger) do
+      instance_double("Logger")
+    end
+
+    let(:rails) do
+      double("Rails")
+    end
+
+    before do
+      allow(rails).to receive(:logger).and_return(logger)
+      allow(logger).to receive(:info)
+      stub_const("Rails", rails)
+    end
+
     subject(:transaction) do
       Minfraud::Transaction.new do |t|
         t.ip = '127.0.0.1'

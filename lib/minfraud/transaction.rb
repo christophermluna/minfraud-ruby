@@ -68,6 +68,7 @@ module Minfraud
     # @raise [TransactionAttributeValidationError] if parameters are set incorrectly
     # @raise [TransactionAttributesMissingError] if required parameters are missing
     def initialize(strong_validation: true)
+      Rails.logger.info("This is a test of warning logs")
       yield self
       unless has_required_attributes?
         raise TransactionAttributesMissingError, 'You did not set all the required transaction attributes.'
@@ -94,6 +95,7 @@ module Minfraud
     # @raise [TransactionAttributeValidationError] if present attributes are not valid
     # @return [void]
     def validate_attributes
+      Rails.logger.info("T his is a warning log")
       INPUT_STRING_ATTRIBUTES.each { |attr| validate_string(attr) }
       INPUT_NUMERIC_ATTRIBUTES.each { |attr| validate_number(attr) }
       CONVERT_STRING_ATTRIBUTES.each { |attr| convert_to_string(attr) }

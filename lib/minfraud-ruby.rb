@@ -1,3 +1,5 @@
+require 'rails'
+require 'logger'
 require 'minfraud/minfraud'
 require 'minfraud/transaction'
 require 'minfraud/minfraud_client'

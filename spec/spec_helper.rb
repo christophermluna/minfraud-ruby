@@ -1,4 +1,8 @@
 require 'minfraud-ruby'
+require 'rails'
+require 'logger'
+
+
 
 RSpec.configure do |config|
   config.mock_with :rspec

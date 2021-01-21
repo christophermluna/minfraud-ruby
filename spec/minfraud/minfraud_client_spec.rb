@@ -4,6 +4,20 @@ require 'webmock/rspec'
 describe Minfraud::MinfraudClient do
   subject(:minfraud_client) { Minfraud::MinfraudClient.new }
   subject(:minfraud_client_east) { Minfraud::MinfraudClient.new(host_choice: 'us_east') }
+  let(:logger) do
+    instance_double("Logger")
+  end
+
+  let(:rails) do
+    double("Rails")
+  end
+
+  before do
+    allow(rails).to receive(:logger).and_return(logger)
+    allow(logger).to receive(:info)
+    stub_const("Rails", rails)
+  end
+
   let(:transaction) {
     Minfraud::Transaction.new do |t|
       t.ip = '127.0.0.1'

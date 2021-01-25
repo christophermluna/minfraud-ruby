@@ -4,10 +4,14 @@ module Minfraud
 
   # This is the container for the data you're sending to MaxMind.
   # A transaction holds data like name, address, IP, order amount, etc.
+  # After initialization, the Transaction object will be immutable
   class Transaction
 
     # Required attribute
-    attr_accessor :ip, :city, :state, :postal, :country, :txn_id
+    attr_accessor :ip, :txn_id, :license_key
+
+    # Billing address (optional)
+    attr_accessor :city, :state, :postal, :country
 
     # Shipping address attribute (optional)
     attr_accessor :ship_addr, :ship_city, :ship_state, :ship_postal, :ship_country
@@ -19,7 +23,7 @@ module Minfraud
     attr_accessor :bin
 
     # Transaction linking attribute (optional)
-    attr_accessor :session_id, :user_agent, :accept_language
+    attr_accessor :user_agent, :accept_language
 
     # Transaction attribute (optional)
     attr_accessor :amount, :currency, :txn_type, :shop_id
@@ -28,69 +32,54 @@ module Minfraud
     attr_accessor :avs_result, :cvv_result
 
     # Miscellaneous attribute (optional)
-    attr_accessor :requested_type, :forwarded_ip
+    attr_accessor :requested_type
 
-    # Override the host choice for this transaction
-    attr_accessor :host_choice
+    ATTRIBUTES = [
+      :ip, :txn_id, :license_key,
+      :city, :state, :postal, :country,
+      :ship_addr, :ship_city, :ship_state, :ship_postal, :ship_country,
+      :email_domain, :email_md5, :phone,
+      :bin,
+      :user_agent, :accept_language,
+      :amount, :currency, :txn_type, :shop_id,
+      :avs_result, :cvv_result,
+      :requested_type
+    ].freeze
 
-    # Set a custom timeout for both read and opening the connection
-    attr_accessor :timeout
+    INPUT_STRING_ATTRIBUTES = [
+      :ip, :txn_id, :license_key,
+      :city, :state, :postal, :country,
+      :ship_addr, :ship_city, :ship_state, :ship_postal, :ship_country,
+      :email, :phone,
+      :bin,
+      :user_agent, :accept_language,
+      :currency, :txn_type,
+      :avs_result, :cvv_result,
+      :requested_type
+    ].freeze
 
-    # Connection timeout and read timeout
-    attr_accessor :open_timeout, :read_timeout
+    INPUT_NUMERIC_ATTRIBUTES = [:amount].freeze
 
-    def initialize
+    REQUIRED_ATTRIBUTES = [:ip, :txn_id, :license_key].freeze
+
+    CONVERT_STRING_ATTRIBUTES = [:shop_id].freeze
+
+    # Initializes the Transaction using parameters set from the block
+    # @raise [TransactionAttributeValidationError] if parameters are set incorrectly
+    # @raise [TransactionAttributeMissingError] if required parameters are missing
+    def initialize(strong_validation: true)
       yield self
       unless has_required_attributes?
-        raise TransactionError, 'You did not set all the required transaction attributes.'
+        raise TransactionAttributeMissingError, 'You did not set all the required transaction attributes.'
       end
-      validate_attributes
-    end
-
-    # Retrieves the risk score from MaxMind.
-    # A higher score indicates a higher risk of fraud.
-    # For example, a score of 20 indicates a 20% chance that a transaction is fraudulent.
-    # @return [Float] 0.01 - 100.0
-    def risk_score
-      response.risk_score
+      validate_attributes if strong_validation
+      freeze
     end
 
     # Hash of attributes that have been set
     # @return [Hash] present attributes
     def attributes
-      attrs = [:ip, :city, :state, :postal, :country, :license_key, :ship_addr, :ship_city, :ship_state, :ship_postal, :ship_country, :email_domain, :email_md5, :phone, :bin, :session_id, :user_agent, :accept_language, :txn_id, :amount, :currency, :txn_type, :avs_result, :cvv_result, :requested_type, :forwarded_ip, :shop_id]
-      attrs.map! do |a|
-        [a, send(a)]
-      end
-      Hash[attrs]
-    end
-
-    # Uses the requested_type set on the instance, or if not present, the requested_type set during configuration
-    # @return [String, nil] requested type
-    def requested_type
-      @requested_type or Minfraud.requested_type
-    end
-
-    # Sends transaction to MaxMind in order to get risk data on it.
-    # Caches response object in @response.
-    # @return [Response]
-    def response
-      @response ||= Request.get(self)
-    end
-
-    def timeout=(timeout)
-      raise ArgumentError, "Timeout value must be Numeric" unless timeout.is_a?(Numeric)
-      @timeout = timeout
-    end
-
-    def open_timeout=(timeout)
-      raise ArgumentError, "Open timeout value must be Numeric" unless timeout.is_a?(Numeric)
-      @open_timeout = timeout
-    end
-
-    def read_timeout=(timeout)
-      raise ArgumentError, "Read timeout value must be Numeric" unless timeout.is_a?(Numeric)
-      @read_timeout = timeout
+      Hash[ATTRIBUTES.map { |a| [a, send(a)] }].compact
     end
 
     private
@@ -98,40 +87,85 @@ module Minfraud
     # Ensures the required attributes are present
     # @return [Boolean]
     def has_required_attributes?
-      ip && txn_id
+      REQUIRED_ATTRIBUTES.none? { |attr| send(attr).nil? || send(attr).empty? }
     end
 
     # Validates the types of the attributes
-    # @return [nil, TransactionError]
+    # @raise [TransactionAttributeValidationError] if present attributes are not valid
+    # @return [void]
     def validate_attributes
-      [:ip, :city, :state, :postal, :country, :txn_id].each { |s| validate_string(s) }
+      INPUT_STRING_ATTRIBUTES.each { |attr| validate_string(attr) }
+      INPUT_NUMERIC_ATTRIBUTES.each { |attr| validate_number(attr) }
+      CONVERT_STRING_ATTRIBUTES.each { |attr| convert_to_string(attr) }
+      validate_cvv # CVV must be a single character
     end
 
     # Given the symbol of an attribute that should be a string,
     # it checks the attribute's type and throws an error if it's not a string.
     # @param attr_name [Symbol] name of the attribute to validate
-    # @return [nil, TransactionError]
+    # @raise [TransactionAttributeValidationError] if attribute is not a string
+    # @return [void]
     def validate_string(attr_name)
-      attribute = self.send(attr_name)
+      attribute = send(attr_name)
       if attribute && !attribute.instance_of?(String)
-        raise TransactionError, "Transaction.#{attr_name} must be a string"
+        raise TransactionAttributeValidationError, "Transaction.#{attr_name} must be a string"
       end
+    end
+
+    # Given the symbol of an attribute that should be a number,
+    # it checks the attribute's type and throws an error if it
+    # cannot be interpreted as a BigDecimal
+    # @param attr_name [Symbol] name of the attribute to validate
+    # @raise [TransactionAttributeValidationError] if attribute is not a number
+    # @return [void]
+    def validate_number(attr_name)
+      attribute = send(attr_name)
+      return if attribute.nil? || attribute.is_a?(Numeric)
+      begin
+        BigDecimal(attribute)
+      rescue
+        raise TransactionAttributeValidationError, "Transaction.#{attr_name} must be a number"
+      end
+    end
+
+    # Validates the cvv_result, which must be a single character
+    # @raise [TransactionAttributeValidationError] if cvv_result is not a single character
+    # @return [void]
+    def validate_cvv
+      return if cvv_result.nil? || cvv_result.empty?
+      unless cvv_result.length == 1
+        raise TransactionAttributeValidationError, "Transaction.cvv_result must be a single letter"
+      end
+    end
+
+    # Converts the given attribute to a string
+    # @param attr_name [Symbol] name of the attribute to convert
+    # @return [void]
+    def convert_to_string(attr_name)
+      attribute = send(attr_name)
+      return if attribute.nil?
+      send("#{attr_name}=", attribute.to_s)
     end
 
     # @return [String, nil] domain of the email address
     def email_domain
+      return nil if email.nil? || email.empty?
       email.to_s.split('@').last
     end
 
     # @return [String, nil] MD5 hash of the whole email address
     def email_md5
-      Digest::MD5.hexdigest(email.to_s)
+      return nil if email.nil? || email.empty?
+      # convert the email address to lowercase before calculating its MD5 hash
+      Digest::MD5.hexdigest(email.to_s.downcase).to_s
     end
 
-    # @return [String] license key set during configuration
-    def license_key
-      Minfraud.license_key
-    end
+    private_constant(
+      :ATTRIBUTES,
+      :INPUT_STRING_ATTRIBUTES,
+      :INPUT_NUMERIC_ATTRIBUTES,
+      :REQUIRED_ATTRIBUTES
+    )
 
   end
 end
